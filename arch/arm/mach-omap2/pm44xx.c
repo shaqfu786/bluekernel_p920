@@ -957,7 +957,7 @@ static int omap4_pm_suspend(void)
 		pr_err("Could not enter target state in pm_suspend\n");
 	else
 		pr_err("Successfully put all powerdomains to target state\n");
-	
+
 	return 0;
 }
 
@@ -1820,6 +1820,9 @@ static int __init omap4_pm_init(void)
 		gpio_free(22);
 	}
 #endif
+
+	/* apply any pending bus throughput requests */
+	omap_pm_apply_min_bus_tput();
 
 err2:
 	return ret;
