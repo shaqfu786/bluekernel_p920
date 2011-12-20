@@ -171,6 +171,14 @@
 
 #define TWL6040_EARENA			0x01
 
+/* HFLCTL (0x14) fields */
+
+#define TWL6040_HFDRVENAL		0x10
+
+/* HFRCTL (0x16) fields */
+
+#define TWL6040_HFDRVENAR		0x10
+
 /* VIBCTLL (0x18) fields */
 
 #define TWL6040_VIBCTRLLN		0x10
@@ -227,6 +235,8 @@
 /* LGE_SJIT 2011-12-07 [dojip.kim@lge.com] from P940 GB */
 #define TWL6040_HKCOMP			0x01
 #define TWL6040_PLUGCOMP		0x02
+#define TWL6040_HFLOCDET		0x04
+#define TWL6040_HFROCDET		0x08
 #define TWL6040_VIBLOCDET		0x10
 #define TWL6040_VIBROCDET		0x20
 #define TWL6040_TSHUTDET		0x40

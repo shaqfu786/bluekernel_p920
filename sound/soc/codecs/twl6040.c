@@ -1305,7 +1305,7 @@ static irqreturn_t twl6040_audio_handler(int irq, void *data)
 	struct snd_soc_codec *codec = data;
 	struct twl6040 *twl6040 = codec->control_data;
 	struct twl6040_data *priv = snd_soc_codec_get_drvdata(codec);
-	u8 intid;
+	u8 intid, val;
 	
 //LGE_START,20120331,myungwon.kim@lge.com, Fast Popup Noise Remove
     twl6040_clear_reg_bit(codec, TWL6040_REG_AMICBCTL, TWL6040_HMICENA);
@@ -1332,6 +1332,24 @@ static irqreturn_t twl6040_audio_handler(int irq, void *data)
 		wake_lock_timeout(&priv->wake_lock, 2 * HZ);
 		queue_delayed_work(priv->workqueue, &priv->delayed_work,
 				   msecs_to_jiffies(200));
+	}
+
+	if (intid & TWL6040_HFINT) {
+		val = twl6040_read_reg_volatile(codec, TWL6040_REG_STATUS);
+		if (val & TWL6040_HFLOCDET)
+			dev_err(codec->dev, "Left Handsfree overcurrent\n");
+		if (val & TWL6040_HFROCDET)
+			dev_err(codec->dev, "Right Handsfree overcurrent\n");
+
+		val = twl6040_read_reg_cache(codec, TWL6040_REG_HFLCTL);
+		twl6040_write(codec, TWL6040_REG_HFLCTL,
+				val & ~TWL6040_HFDRVENAL);
+
+		val = twl6040_read_reg_cache(codec, TWL6040_REG_HFRCTL);
+		twl6040_write(codec, TWL6040_REG_HFRCTL,
+				val & ~TWL6040_HFDRVENAR);
+
+		twl6040_report_event(twl6040, TWL6040_HFOC_EVENT);
 	}
 #if defined(CONFIG_SND_OMAP_SOC_LGE_JACK)
 		
@@ -2423,6 +2441,14 @@ static int twl6040_probe(struct snd_soc_codec *codec)
 		goto irq_err;
 	}
 
+	ret = twl6040_request_irq(codec->control_data, TWL6040_IRQ_HF,
+				twl6040_audio_handler, 0,
+				"twl6040_irq_hf", codec);
+	if (ret) {
+		dev_err(codec->dev, "HF IRQ request failed: %d\n", ret);
+		goto hfirq_err;
+	}
+
 	/* LGE_SJIT 2011-12-09 [dojip.kim@lge.com] from P940 GB
 	 * doyeob.kim@lge.com 2011-03-09 support ear-jack detection
 	 */
@@ -2468,6 +2494,8 @@ bias_err:
 	twl6040_free_irq(codec->control_data, TWL6040_IRQ_HOOK, codec);
 hook_irq_err:
 #endif
+	twl6040_free_irq(codec->control_data, TWL6040_IRQ_HF, codec);
+hfirq_err:
 	twl6040_free_irq(codec->control_data, TWL6040_IRQ_PLUG, codec);
 irq_err:
 	wake_lock_destroy(&priv->wake_lock);
@@ -2498,6 +2526,7 @@ static int twl6040_remove(struct snd_soc_codec *codec)
 	twl6040_free_irq(codec->control_data, TWL6040_IRQ_HOOK, codec);
 #endif
 	twl6040_free_irq(codec->control_data, TWL6040_IRQ_PLUG, codec);
+	twl6040_free_irq(codec->control_data, TWL6040_IRQ_HF, codec);
 	if (priv->vddhf_reg)
 		regulator_put(priv->vddhf_reg);
 	wake_lock_destroy(&priv->wake_lock);
