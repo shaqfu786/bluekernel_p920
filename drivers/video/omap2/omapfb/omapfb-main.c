@@ -2468,7 +2468,6 @@ static int omapfb_probe(struct platform_device *pdev)
 		goto cleanup;
 	}
 
-	INIT_WORK(&fbdev->vsync_work, omapfb_send_vsync_work);
 	return 0;
 
 cleanup:
@@ -2483,7 +2482,6 @@ static int omapfb_remove(struct platform_device *pdev)
 	struct omapfb2_device *fbdev = platform_get_drvdata(pdev);
 
 	/* FIXME: wait till completion of pending events */
-	/* TODO: terminate vsync thread */
 
 	omapfb_remove_sysfs(fbdev);
 
