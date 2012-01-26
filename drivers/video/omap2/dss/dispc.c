@@ -925,7 +925,7 @@ dispc_get_scaling_coef(u32 inc, bool five_taps)
 	static const struct dispc_hv_coef coef_M32[8] = {
 		{    7,   34,   46,   34,    7 },
 		{    4,   31,   46,   37,   10 },
-		{    1,   27,   46,   39,   14 },
+		{    1,   28,   46,   39,   14 },
 		{   -1,   24,   46,   42,   17 },
 		{   21,   45,   45,   21,   -4 },
 		{   17,   42,   46,   24,   -1 },
