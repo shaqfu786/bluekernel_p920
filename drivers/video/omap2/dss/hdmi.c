@@ -78,6 +78,8 @@ enum extension_edid_db {
 #define EDID_SIZE_BLOCK1_TIMING_DESCRIPTOR	4
 
 #define OMAP_HDMI_TIMINGS_NB			34
+#define HDMI_DEFAULT_REGN 15
+#define HDMI_DEFAULT_REGM2 1
 
 static struct {
 	struct mutex lock;
@@ -591,7 +593,11 @@ static void hdmi_compute_pll(struct omap_dss_device *dssdev, int phy,
 	 * Input clock is predivided by N + 1
 	 * out put of which is reference clk
 	 */
-	pi->regn = dssdev->clocks.hdmi.regn;
+	if (dssdev->clocks.hdmi.regn == 0)
+		pi->regn = HDMI_DEFAULT_REGN;
+	else
+		pi->regn = dssdev->clocks.hdmi.regn;
+
 	refclk = clkin / (pi->regn + 1);
 
 	/*
@@ -599,7 +605,11 @@ static void hdmi_compute_pll(struct omap_dss_device *dssdev, int phy,
 	 * Multiplying by 100 to avoid fractional part removal
 	 */
 	pi->regm = (phy * 100 / (refclk)) / 100;
-	pi->regm2 = dssdev->clocks.hdmi.regm2;
+
+	if (dssdev->clocks.hdmi.regm2 == 0)
+		pi->regm2 = HDMI_DEFAULT_REGM2;
+	else
+		pi->regm2 = dssdev->clocks.hdmi.regm2;
 
 	/*
 	 * fractional multiplier is remainder of the difference between
@@ -748,15 +758,16 @@ static int hdmi_power_on(struct omap_dss_device *dssdev)
 		dssdev->panel.timings.y_res, hdmi.mode);
 
 	if (!hdmi.custom_set) {
-        // wooho47.jung@lge.com 2012.04.19
-        // MOD : for default mode. p2 is not dvi, is hdmi.
-        #if 1
-	    struct fb_videomode vga = cea_modes[4];
-	    hdmi_set_timings(&vga, false);
-        #else
-	    struct fb_videomode vesa_vga = vesa_modes[4];
-	    hdmi_set_timings(&vesa_vga, false);
-        #endif
+		u32 cea_code = 0;
+		struct fb_videomode default_mode;
+
+		cea_code = dssdev->panel.hdmi_default_cea_code;
+		if (cea_code > 0 && cea_code < CEA_MODEDB_SIZE)
+			default_mode = cea_modes[cea_code];
+		else
+			default_mode = vesa_modes[4];
+
+		hdmi_set_timings(&default_mode, false);
 	}
 
 	omapfb_fb2dss_timings(&hdmi.cfg.timings, &dssdev->panel.timings);
