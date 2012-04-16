@@ -2334,13 +2334,14 @@ static inline unsigned ddr2ns(struct platform_device *dsidev, unsigned ddr)
 	return ddr * 1000 * 1000 / (ddr_clk / 1000);
 }
 
-static void dsi_cio_timings(struct platform_device *dsidev)
+static void dsi_cio_timings(struct omap_dss_device *dssdev)
 {
 	u32 r;
 	u32 ths_prepare, ths_prepare_ths_zero, ths_trail, ths_exit;
 	u32 tlpx_half, tclk_trail, tclk_zero;
 	u32 tclk_prepare;
-
+	struct platform_device *dsidev = dsi_get_dsidev_from_dssdev(dssdev);
+#if defined(CONFIG_MACH_LGE)
 	/* calculate timings */
 
 	/* 1 * DDR_CLK = 2 * UI */
@@ -2368,6 +2369,16 @@ static void dsi_cio_timings(struct platform_device *dsidev)
 
 	/* min tclk-prepare + tclk-zero = 300ns */
 	tclk_zero = ns2ddr(dsidev, 265 /* diff gb 265 <- 260 */); //for DSI_DSIPHY_CFG0
+#else
+	ths_prepare		= dssdev->clocks.dsi.ths.prepare;
+	ths_prepare_ths_zero	= ths_prepare + dssdev->clocks.dsi.ths.zero;
+	ths_trail		= dssdev->clocks.dsi.ths.trail;
+	ths_exit		= dssdev->clocks.dsi.ths.exit;
+	tlpx_half		= dssdev->clocks.dsi.tlpx / 2;
+	tclk_trail		= dssdev->clocks.dsi.tclk.trail;
+	tclk_prepare		= dssdev->clocks.dsi.tclk.prepare;
+	tclk_zero		= dssdev->clocks.dsi.tclk.zero;
+#endif
 
 	DSSDBG("ths_prepare %u (%uns), ths_prepare_ths_zero %u (%uns)\n",
 		ths_prepare, ddr2ns(dsidev, ths_prepare),
@@ -2636,7 +2647,7 @@ static int dsi_cio_init(struct omap_dss_device *dssdev)
 	/* FORCE_TX_STOP_MODE_IO */
 	REG_FLD_MOD(dsidev, DSI_TIMING1, 0, 15, 15);
 
-	dsi_cio_timings(dsidev);
+	dsi_cio_timings(dssdev);
 
 	dsi->ulps_enabled = false;
 
@@ -3155,6 +3166,9 @@ err1:
 err0:
 	return r;
 }
+
+
+
 EXPORT_SYMBOL(dsi_vc_send_bta_sync);
 
 static inline void dsi_vc_write_long_header(struct platform_device *dsidev,
@@ -3999,11 +4013,12 @@ static int dsi_video_proto_config(struct omap_dss_device *dssdev)
 {
 	struct platform_device *dsidev = dsi_get_dsidev_from_dssdev(dssdev);
 	struct omap_video_timings *timings = &dssdev->panel.timings;
+	struct omap_dsi_timings t;
 	int buswidth = 0;
 	u32 r;
 	int bytes_per_pixel;
 	int hbp, hfp, hsa, tl;
-	int lanes;
+	int lanes, line;
 
 	dsi_config_tx_fifo(dsidev, DSI_FIFO_SIZE_32,
 			DSI_FIFO_SIZE_32,
@@ -4063,7 +4078,7 @@ static int dsi_video_proto_config(struct omap_dss_device *dssdev)
 	r = FLD_MOD(r, 1, 9, 9);	/* VP_DE_POL */
 	r = FLD_MOD(r, 0, 10, 10);	/* VP_HSYNC_POL */
 	r = FLD_MOD(r, 1, 11, 11);	/* VP_VSYNC_POL */
-	r = FLD_MOD(r, 2, 13, 12);	/* LINE_BUFFER */
+	r = FLD_MOD(r, dssdev->phy.dsi.line_bufs, 13, 12);/* LINE_BUFFER */
 	r = FLD_MOD(r, 1, 14, 14);	/* TRIGGER_RESET_MODE */
 	r = FLD_MOD(r, 1, 15, 15);	/* VP_VSYNC_START */
 	r = FLD_MOD(r, 1, 17, 17);	/* VP_HSYNC_START */
@@ -4118,55 +4133,80 @@ static int dsi_video_proto_config(struct omap_dss_device *dssdev)
 	dsi_write_reg(dsidev, DSI_VM_TIMING3, r);
 
 #else /* original */
-	lanes = dsi_get_num_data_lanes_dssdev(dssdev);
+	if (dssdev->dsi_timings) {
+		memcpy(&t, dssdev->dsi_timings, sizeof(t));
+	} else {
+		/* This whole else clause should eventually be removed
+		 * and everything should be given in board config file.
+		 * These are legacy lines that work work with various
+		 * low-res displays for which DSI blanking values are computed.
+		 */
+		lanes = dsi_get_num_data_lanes_dssdev(dssdev);
+		t.hbp = dispc_to_dsi_clock((timings->hsw - 1) +
+			(timings->hbp - 1), dssdev->ctrl.pixel_size, lanes);
+		t.hfp = dispc_to_dsi_clock(timings->hfp - 1,
+			dssdev->ctrl.pixel_size, lanes);
+		t.hsa = 0;
 
-	hbp = dispc_to_dsi_clock((timings->hsw - 1) + (timings->hbp - 1),
-				dssdev->ctrl.pixel_size, lanes);
-	hfp = dispc_to_dsi_clock(timings->hfp - 1,
-		dssdev->ctrl.pixel_size, lanes);
-	hsa = 0;
+		line = timings->hbp + timings->hfp +
+			timings->hsw + timings->x_res;
+		WARN((line * dssdev->ctrl.pixel_size / 8) % lanes != 0,
+		     "TL should be an exact "
+		     "integer, try changing DISPC horizontal blanking "
+		     "parameters");
 
-	line = timings->hbp + timings->hfp + timings->hsw + timings->x_res;
-	WARN((line * dssdev->ctrl.pixel_size / 8) % lanes != 0, "TL should be an exact "
-			"integer, try changing DISPC horizontal blanking parameters");
+		t.tl = dispc_to_dsi_clock(line, dssdev->ctrl.pixel_size, lanes);
+		t.vact = timings->y_res;
+		t.vsa = timings->vsw;
+		t.vbp = timings->vbp;
+		t.vfp = timings->vfp;
 
-	tl =  dispc_to_dsi_clock(line, dssdev->ctrl.pixel_size, lanes);
+		t.hsa_hs_int	= 72;
+		t.hfp_hs_int	= 114;
+		t.hbp_hs_int	= 150;
+		t.hsa_lp_int	= 130;
+		t.hfp_lp_int	= 223;
+		t.hbp_lp_int	= 59;
+		t.bl_lp_int	= 0x31d1;
+		t.bl_hs_int	= 0x7a67;
+		t.exit_lat	= 15;
+		t.enter_lat	= 18;
+	}
 
 	r = dsi_read_reg(dsidev, DSI_VM_TIMING1);
-	r = FLD_MOD(r, hbp, 11, 0);   /* HBP */
-	r = FLD_MOD(r, hfp, 23, 12);  /* HFP */
-	r = FLD_MOD(r, hsa, 31, 24);  /* HSA */
+	r = FLD_MOD(r, t.hbp, 11, 0);		/* HBP */
+	r = FLD_MOD(r, t.hfp, 23, 12);		/* HFP */
+	r = FLD_MOD(r, t.hsa, 31, 24);		/* HSA */
 	dsi_write_reg(dsidev, DSI_VM_TIMING1, r);
 
 	r = dsi_read_reg(dsidev, DSI_VM_TIMING2);
-	r = FLD_MOD(r, timings->vbp, 7, 0);    /* VBP */
-	r = FLD_MOD(r, timings->vfp, 15, 8);   /* VFP */
-	r = FLD_MOD(r, timings->vsw, 23, 16);  /* VSA */
-	r = FLD_MOD(r, 4, 27, 24);	/* WINDOW_SYNC */
+	r = FLD_MOD(r, t.vbp, 7, 0);		/* VBP */
+	r = FLD_MOD(r, t.vfp, 15, 8);		/* VFP */
+	r = FLD_MOD(r, t.vsa, 23, 16);		/* VSA */
+	r = FLD_MOD(r, 4, 27, 24);		/* WINDOW_SYNC */
 	dsi_write_reg(dsidev, DSI_VM_TIMING2, r);
 
 	r = dsi_read_reg(dsidev, DSI_VM_TIMING3);
-	r = FLD_MOD(r, timings->y_res, 14, 0);
-	r = FLD_MOD(r, tl, 31, 16);
+	r = FLD_MOD(r, t.vact, 14, 0);		/* Active lines */
+	r = FLD_MOD(r, t.tl, 31, 16);		/* Total line length */
 	dsi_write_reg(dsidev, DSI_VM_TIMING3, r);
 
-	/* TODO: either calculate these values or make them configurable */
-	r = FLD_VAL(72, 23, 16) |       /* HSA_HS_INTERLEAVING */
-		FLD_VAL(114, 15, 8) |   /* HFB_HS_INTERLEAVING */
-		FLD_VAL(150, 7, 0);     /* HbB_HS_INTERLEAVING */
+	r = FLD_VAL(t.hsa_hs_int, 23, 16) |      /* HSA_HS_INTERLEAVING */
+		FLD_VAL(t.hfp_hs_int, 15, 8) |   /* HFP_HS_INTERLEAVING */
+		FLD_VAL(t.hbp_hs_int, 7, 0);     /* HBP_HS_INTERLEAVING */
 	dsi_write_reg(dsidev, DSI_VM_TIMING4, r);
 
-	r = FLD_VAL(130, 23, 16) |      /* HSA_LP_INTERLEAVING */
-		FLD_VAL(223, 15, 8) |   /* HFB_LP_INTERLEAVING */
-		FLD_VAL(59, 7, 0);      /* HBB_LP_INTERLEAVING */
+	r = FLD_VAL(t.hsa_lp_int, 23, 16) |	/* HSA_LP_INTERLEAVING */
+		FLD_VAL(t.hfp_lp_int, 15, 8) |	/* HFP_LP_INTERLEAVING */
+		FLD_VAL(t.hbp_lp_int, 7, 0);	/* HBP_LP_INTERLEAVING */
 	dsi_write_reg(dsidev, DSI_VM_TIMING5, r);
 
-	r = FLD_VAL(0x7A67, 31, 16) |   /* BL_HS_INTERLEAVING */
-		FLD_VAL(0x31D1, 15, 0); /* BL_LP_INTERLEAVING */
+	r = FLD_VAL(t.bl_hs_int, 31, 16) |	/* BL_HS_INTERLEAVING */
+		FLD_VAL(t.bl_lp_int, 15, 0);	/* BL_LP_INTERLEAVING */
 	dsi_write_reg(dsidev, DSI_VM_TIMING6, r);
 
-	r = FLD_VAL(18, 31, 16) |       /* ENTER_HS_MODE_LATENCY */
-		FLD_VAL(15, 15, 0);	/* EXIT_HS_MODE_LATENCY */
+	r = FLD_VAL(t.enter_lat, 31, 16) |	/* ENTER_HS_MODE_LATENCY */
+		FLD_VAL(t.exit_lat, 15, 0);	/* EXIT_HS_MODE_LATENCY */
 	dsi_write_reg(dsidev, DSI_VM_TIMING7, r);
 #endif
 
@@ -4751,8 +4791,13 @@ static int dsi_display_init_dispc(struct omap_dss_device *dssdev)
 
 		dispc_set_lcd_timings(dssdev->manager->id, &timings);
 	} else {
-		dispc_set_lcd_timings(dssdev->manager->id,
-				       &dssdev->panel.timings);
+		if (dssdev->dispc_timings) {
+			dispc_set_lcd_timings(dssdev->manager->id,
+				dssdev->dispc_timings);
+		} else {
+			dispc_set_lcd_timings(dssdev->manager->id,
+				&dssdev->panel.timings);
+		}
 	}
 
 #if defined (CONFIG_MACH_LGE)
@@ -4980,6 +5025,8 @@ int omapdss_dsi_display_enable(struct omap_dss_device *dssdev)
 		REG_FLD_MOD(dsidev, DSI_SYSCONFIG, 1, 1, 1);
 		_dsi_wait_reset(dsidev);
 	}
+	/* ENWAKEUP */
+	REG_FLD_MOD(dsidev, DSI_SYSCONFIG, 1, 2, 2);
 
 	_dsi_initialize_irq(dsidev);
 
@@ -5031,7 +5078,6 @@ void omapdss_dsi_display_disable(struct omap_dss_device *dssdev,
 {
 	struct platform_device *dsidev = dsi_get_dsidev_from_dssdev(dssdev);
 	struct dsi_data *dsi = dsi_get_dsidrv_data(dsidev);
-	//static bool first_run_after_boot = 1;
 
 	DSSDBG("dsi_display_disable\n");
 
