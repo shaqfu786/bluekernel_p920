@@ -45,7 +45,8 @@ config ARCH_OMAP4
 	select CPU_V7
 	select ARM_GIC
 	select LOCAL_TIMERS if SMP
-	select PL310_ERRATA_727915 if CACHE_L2X0
+	select PL310_ERRATA_588369 if CONFIG_CACHE_L2X0
+	select PL310_ERRATA_727915 if CONFIG_CACHE_L2X0
 	select ARM_ERRATA_720789
 	select ARCH_HAS_OPP
 	select PM_OPP if PM
@@ -184,7 +185,6 @@ config MACH_OMAP3EVM
 	depends on ARCH_OMAP3
 	default y
 	select OMAP_PACKAGE_CBB
-
 
 config MACH_OMAP3517EVM
 	bool "OMAP3517/ AM3517 EVM board"
@@ -500,6 +500,15 @@ config OMAP4_HSOTG_ED_CORRECTION
 	  order to improve Eye Diagramm. On 4430 CPUs this should
 	  improve Eye Diagram at least 8%.
 
+config OMAP_RFKILL_STE_MODEM
+	bool "Enable OMAP RFKILL driver for ST-E modem"
+	depends on RFKILL || !RFKILL
+	help
+	  Select this option to enable usage of RFKILL driver for ST-E modem on
+	  OMAP platforms. This will permit control of power on and off sequences
+	  of the modem as well as necessary dynamic pin muxing of AP/CP
+	  interfaces (platform data dependant)
+
 config GPS
 	bool "GPS GPIO driver"
 	default n
@@ -512,8 +521,6 @@ config P940_GPS_LNA_SD_USE
 	default n
 	help
 	  If you want to support GPS extend LNA GPIO, say Y.
-	  
-endmenu
 
 config FORCE_FAST_CHARGE
 	bool "Force AC charge mode at will"
@@ -521,5 +528,7 @@ config FORCE_FAST_CHARGE
 	help
 	   A simple sysfs interface to force adapters that
 	   are detected as USB to charge as AC.
+
+endmenu
 
 endif
