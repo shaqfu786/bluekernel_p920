@@ -302,6 +302,7 @@ static int hdmi_panel_enable(struct omap_dss_device *dssdev)
 	}
 
 	dssdev->state = OMAP_DSS_DISPLAY_ACTIVE;
+	hdmi_inform_power_on_to_cec(true);
 err:
 	mutex_unlock(&hdmi.hdmi_lock);
 	HDMIDBG("error:%d\n", r);
@@ -313,7 +314,7 @@ static void hdmi_panel_disable(struct omap_dss_device *dssdev)
 {
 	HDMIDBG("ENTER \n");
 	mutex_lock(&hdmi.hdmi_lock);
-
+	hdmi_inform_power_on_to_cec(false);
 	if (dssdev->state == OMAP_DSS_DISPLAY_ACTIVE)
 		omapdss_hdmi_display_disable(dssdev);
 
@@ -402,6 +403,7 @@ static void hdmi_hotplug_detect_worker(struct work_struct *work)
 	mutex_lock(&hdmi.hdmi_lock);
 	if (state == HPD_STATE_OFF) {
 		switch_set_state(&hdmi.hpd_switch, 0);
+		hdmi_inform_hpd_to_cec(false);
 		if (dssdev->state == OMAP_DSS_DISPLAY_ACTIVE) {
 			mutex_unlock(&hdmi.hdmi_lock);
 			dssdev->driver->disable(dssdev);
@@ -431,6 +433,7 @@ static void hdmi_hotplug_detect_worker(struct work_struct *work)
 					dssdev->panel.monspecs.max_x * 10000;
 			dssdev->panel.height_in_um =
 					dssdev->panel.monspecs.max_y * 10000;
+			hdmi_inform_hpd_to_cec(true);
 			switch_set_state(&hdmi.hpd_switch, 1);
 			goto done;
 		} else if (state == HPD_STATE_EDID_TRYLAST){
