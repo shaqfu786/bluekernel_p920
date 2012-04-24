@@ -63,6 +63,7 @@ obj-$(CONFIG_TOUCHSCREEN_W90X900)	+= w90p910_ts.o
 obj-$(CONFIG_TOUCHSCREEN_TPS6507X)	+= tps6507x-ts.o
 obj-$(CONFIG_TOUCHSCREEN_SYNTM12XX)	+= syntm12xx.o
 obj-$(CONFIG_TOUCHSCREEN_QUANTUM_OBP)	+= qtouch_obp_ts.o
+obj-$(CONFIG_TOUCHSCREEN_CYPRESS_TTSP) +=  cyttsp4_core.o cyttsp4_i2c.o
 
 ## LGE_SJIT_S 2011-10-13 [choongryeol.lee@lge.com] synaptics rmi4 touch driver
 obj-$(CONFIG_LGE_TOUCHSCREEN_SYNAPTICS_RMI4_I2C)	+=touch_synaptics_rmi4_i2c.o touch_synaptics_fw_upgrade_lghdk.o
