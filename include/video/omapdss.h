@@ -871,6 +871,7 @@ struct omap_dss_driver {
 	/* for wrapping around state changes */
 	void (*disable_orig)(struct omap_dss_device *display);
 	int (*enable_orig)(struct omap_dss_device *display);
+	int (*suspend_orig)(struct omap_dss_device *display);
 #if 1 //##defined(3D_LCD_FUNCTION)
 /* S3D specific */
 /* Used for displays that can switch 3D mode on/off
@@ -889,7 +890,7 @@ struct omap_dss_driver {
 	void (*get_edid_realtime)(struct omap_dss_device *dssdev,
 		struct omap_video_timings *timings);
 // LGE_CHANGE [mo2sanggill.lee@lge.com] 2011-11-12 CX2 for realtime edid read
-#endif //##	
+#endif
 };
 
 int omap_dss_register_driver(struct omap_dss_driver *);
