@@ -253,7 +253,6 @@ static inline int twl6030_mmc_card_detect(struct device *dev, int slot)
 	return -EIO;
 }
 #endif
-
 /*----------------------------------------------------------------------*/
 
 /*
@@ -676,6 +675,7 @@ struct twl4030_bci_platform_data {
 	unsigned int use_power_path;
 	unsigned long features;
 	unsigned int use_eeprom_config;
+	unsigned long errata;
 
 	/* LGE_SJIT 2012-01-25 [dojip.kim@lge.com]
 	 * LGE specific platform data
@@ -899,7 +899,6 @@ struct twl4030_platform_data {
 	struct regulator_init_data              *vcxio;
 	struct regulator_init_data              *vusb;
 	struct regulator_init_data		*clk32kg;
-
 	struct regulator_init_data              *clk32kaudio;
 	/* TWL6032 LDO regulators */
 	struct regulator_init_data		*ldo1;

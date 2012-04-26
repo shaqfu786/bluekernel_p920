@@ -58,10 +58,6 @@
  * (and associated registers).
  */
 
-/* LGE_SJIT 2012-02-06 [dojip.kim@lge.com]
- * below is defined by kconfig
- */
-//#define CONFIG_TWL6030_BCI_BATTERY
 #define DRIVER_NAME			"twl"
 
 #if defined(CONFIG_KEYBOARD_TWL4030) || defined(CONFIG_KEYBOARD_TWL4030_MODULE)
@@ -680,7 +676,8 @@ add_regulator(int num, struct regulator_init_data *pdata,
  */
 
 static int
-add_children(struct twl4030_platform_data *pdata, unsigned long features)
+add_children(struct twl4030_platform_data *pdata, unsigned long features,
+		unsigned long errata)
 {
 	struct device	*child;
 	unsigned sub_chip_id;
@@ -704,6 +701,7 @@ add_children(struct twl4030_platform_data *pdata, unsigned long features)
 	}
 	if (twl_has_bci() && pdata->bci) {
 		pdata->bci->features = features;
+		pdata->bci->errata = errata;
 		child = add_child(1, "twl6030_bci",
 				pdata->bci, sizeof(*pdata->bci),
 				false,
@@ -1341,6 +1339,7 @@ twl_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	struct twl4030_platform_data	*pdata = client->dev.platform_data;
 	u8 temp;
 	int ret = 0, features;
+	unsigned long errata = 0;
 
 	if (!pdata) {
 		dev_dbg(&client->dev, "no platform data?\n");
@@ -1452,7 +1451,7 @@ twl_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		twl_i2c_write_u8(TWL4030_MODULE_INTBR, temp, REG_GPPUPDCTR1);
 	}
 
-	status = add_children(pdata, features);
+	status = add_children(pdata, features, errata);
 
 	/* LGE_SJIT 2012-02-06 [dojip.kim@lge.com]
 	 * fix memory leaks
