@@ -1671,6 +1671,12 @@ static const struct snd_kcontrol_new hfr_mux_controls =
 static const struct snd_kcontrol_new ep_driver_switch_controls =
 	SOC_DAPM_SINGLE("Switch", TWL6040_REG_EARCTL, 0, 1, 0);
 
+static const struct snd_kcontrol_new auxl_switch_controls =
+	SOC_DAPM_SINGLE("Switch", TWL6040_REG_HFLCTL, 6, 1, 0);
+
+static const struct snd_kcontrol_new auxr_switch_controls =
+	SOC_DAPM_SINGLE("Switch", TWL6040_REG_HFRCTL, 6, 1, 0);
+
 /* Headset power mode */
 static const char *twl6040_headset_power_texts[] = {
 	"Low-Power", "High-Performance",
@@ -1800,6 +1806,8 @@ static const struct snd_soc_dapm_widget twl6040_dapm_widgets[] = {
 	SND_SOC_DAPM_OUTPUT("HFL"),
 	SND_SOC_DAPM_OUTPUT("HFR"),
 	SND_SOC_DAPM_OUTPUT("EP"),
+	SND_SOC_DAPM_OUTPUT("AUXL"),
+	SND_SOC_DAPM_OUTPUT("AUXR"),
 
 	/* Analog input muxes for the capture amplifiers */
 	SND_SOC_DAPM_MUX("Analog Left Capture Route",
@@ -1875,6 +1883,10 @@ static const struct snd_soc_dapm_widget twl6040_dapm_widgets[] = {
 			SND_SOC_NOPM, 0, 0, &hsr_mux_controls),
 
 	/* Analog playback drivers */
+	SND_SOC_DAPM_SWITCH("Aux Left Playback",
+			SND_SOC_NOPM, 0, 0, &auxl_switch_controls),
+	SND_SOC_DAPM_SWITCH("Aux Right Playback",
+			SND_SOC_NOPM, 0, 0, &auxr_switch_controls),
 	SND_SOC_DAPM_OUT_DRV_E("Handsfree Left Driver",
 			TWL6040_REG_HFLCTL, 4, 0, NULL, 0,
 			pga_event,
@@ -1962,6 +1974,8 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"HFDAC Left PGA", NULL, "Handsfree Left Playback"},
 	{"HFDAC Right PGA", NULL, "Handsfree Right Playback"},
 
+	{"Aux Left Playback", "Switch", "HFDAC Left PGA"},
+	{"Aux Right Playback", "Switch", "HFDAC Right PGA"},
 	{"Handsfree Left Driver", "Switch", "HFDAC Left PGA"},
 	{"Handsfree Right Driver", "Switch", "HFDAC Right PGA"},
 
@@ -1970,6 +1984,9 @@ static const struct snd_soc_dapm_route intercon[] = {
 
 	{"HFL", NULL, "Handsfree Left Driver"},
 	{"HFR", NULL, "Handsfree Right Driver"},
+
+	{"AUXL", NULL, "Aux Left Playback"},
+	{"AUXR", NULL, "Aux Right Playback"},
 };
 
 static int twl6040_add_widgets(struct snd_soc_codec *codec)
