@@ -1553,6 +1553,7 @@ static int dapm_power_widgets(struct snd_soc_dapm_context *dapm, int event)
 			dapm->dev_power = 1;
 			break;
 		case SND_SOC_DAPM_STREAM_STOP:
+#warning need re-work
 			if (dapm->codec)
 				dapm->dev_power = !!dapm->codec->active;
 			else
@@ -3093,7 +3094,7 @@ static void soc_dapm_shutdown_codec(struct snd_soc_dapm_context *dapm)
 	LIST_HEAD(down_list);
 	int powerdown = 0;
 
-	mutex_lock(&card->dapm_mutex);
+	mutex_lock(&card->power_mutex);
 
 	list_for_each_entry(w, &dapm->card->widgets, list) {
 		if (w->dapm != dapm)
@@ -3118,7 +3119,7 @@ static void soc_dapm_shutdown_codec(struct snd_soc_dapm_context *dapm)
 						    SND_SOC_BIAS_STANDBY);
 	}
 
-	mutex_unlock(&card->dapm_mutex);
+	mutex_unlock(&card->power_mutex);
 }
 
 /*
