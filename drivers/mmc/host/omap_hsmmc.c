@@ -43,11 +43,6 @@
 #include <plat/cpu.h>
 #include <plat/omap-pm.h>
 
-//nthyunjin.yang 120518 sdcard cover start
-//#define CONFIG_MACH_LGE_MMC_ENHANCED_COVER 1
-//#define CONFIG_MACH_LGE_MMC_COVER 1
-//nthyunjin.yang 120518 sdcard cover end
-
 /* OMAP HSMMC Host Controller Registers */
 #define OMAP_HSMMC_SYSCONFIG	0x0010
 #define OMAP_HSMMC_SYSSTATUS	0x0014
@@ -2802,7 +2797,7 @@ static int omap_hsmmc_remove(struct platform_device *pdev)
 	struct resource *res;
 
 	if (host) {
-		mmc_host_enable(host->mmc);
+		mmc_claim_host(host->mmc);
 		mmc_remove_host(host->mmc);
 		if (host->use_reg)
 			omap_hsmmc_reg_put(host);
@@ -2823,7 +2818,7 @@ static int omap_hsmmc_remove(struct platform_device *pdev)
 			dma_free_coherent(NULL, ADMA_TABLE_SZ,
 				host->adma_table, host->phy_adma_table);
 
-		mmc_host_disable(host->mmc);
+		mmc_release_host(host->mmc);
 		pm_runtime_suspend(host->dev);
 
 		clk_put(host->fclk);
@@ -2883,9 +2878,11 @@ static int omap_hsmmc_suspend(struct device *dev)
 			host->mmc->pm_flags |= MMC_PM_KEEP_POWER;
 		ret = mmc_suspend_host(host->mmc);
 		if (ret == 0) {
+			mmc_claim_host(host->mmc);
 			omap_hsmmc_disable_irq(host);
 			OMAP_HSMMC_WRITE(host->base, HCTL,
 				OMAP_HSMMC_READ(host->base, HCTL) & ~SDBP);
+			mmc_release_host(host->mmc);
 
 			if (host->got_dbclk)
 				clk_disable(host->dbclk);
@@ -2922,6 +2919,7 @@ static int omap_hsmmc_resume(struct device *dev)
 		return 0;
 
 	if (host) {
+		mmc_claim_host(host->mmc);
 		pm_runtime_get_sync(host->dev);
 
 		if (host->got_dbclk)
@@ -2943,6 +2941,7 @@ static int omap_hsmmc_resume(struct device *dev)
 		if (ret == 0)
 			host->suspended = 0;
 
+		mmc_release_host(host->mmc);
 		pm_runtime_put_sync(host->dev);
 	}
 
