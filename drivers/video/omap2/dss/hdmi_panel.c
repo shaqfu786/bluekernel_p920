@@ -507,6 +507,12 @@ static void hdmi_get_resolution(struct omap_dss_device *dssdev,
 	*yres = dssdev->panel.timings.y_res;
 }
 
+static enum omap_dss_update_mode hdmi_get_update_mode(
+		struct omap_dss_device *dssdev)
+{
+	return OMAP_DSS_UPDATE_MANUAL;
+}
+
 static struct omap_dss_driver hdmi_driver = {
 	.probe		= hdmi_panel_probe,
 	.remove		= hdmi_panel_remove,
@@ -520,12 +526,13 @@ static struct omap_dss_driver hdmi_driver = {
 	.get_resolution = hdmi_get_resolution,
 	.get_modedb	= hdmi_get_modedb,
 	.set_mode	= omapdss_hdmi_display_set_mode,
+	.get_update_mode = hdmi_get_update_mode,
 #if defined(CONFIG_MACH_LGE_COSMO_3D_DISPLAY)	  //mo2sanghyun.lee 2012.06.12   3d setting
 	.enable_s3d     = hdmi_panel_enable_s3d,
 	.get_s3d_enabled    = hdmi_panel_get_s3d_enabled,
 	.set_s3d_disp_type  = hdmi_panel_set_s3d_disp_type,
 	.get_s3d_disp_type      = hdmi_panel_get_s3d_disp_type,
-#endif	
+#endif
 	.driver			= {
 		.name   = "hdmi_panel",
 		.owner  = THIS_MODULE,
