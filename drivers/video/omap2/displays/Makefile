@@ -8,7 +8,7 @@ obj-$(CONFIG_PANEL_TPO_TD043MTEA1) += panel-tpo-td043mtea1.o
 obj-$(CONFIG_PANEL_ACX565AKM) += panel-acx565akm.o
 
 obj-$(CONFIG_PANEL_TC358765) += panel-tc358765.o
-
+obj-$(CONFIG_PANEL_LD089WU1) += panel-ld089wu1.o
 ## LGE_SJIT_S 2011-08-29 [choongryeol.lee@lge.com] Port on K3.0
 obj-$(CONFIG_PANEL_LGHDK) += panel-lghdk.o
 obj-$(CONFIG_PANEL_LH430WV4_SD02) += panel-lh430wv4-sd02.o
