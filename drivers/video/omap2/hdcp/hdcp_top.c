@@ -2,7 +2,6 @@
  * hdcp_top.c
  *
  * HDCP interface DSS driver setting for TI's OMAP4 family of processor.
- *
  * Copyright (C) 2010-2011 Texas Instruments Incorporated - http://www.ti.com/
  * Authors: Fabrice Olivero
  *	Fabrice Olivero <f-olivero@ti.com>
@@ -315,12 +314,8 @@ static void hdcp_wq_authentication_failure(void)
 	hdcp_lib_auto_bcaps_rdy_check(false);
 	hdcp_lib_set_av_mute(AV_MUTE_SET);
 	hdcp_lib_set_encryption(HDCP_ENC_OFF);
-//	hdcp_lib_set_encryption(HDCP_ENC_ON);
 
-	hdcp_cancel_work(&hdcp.pending_wq_event);
-
-	//hdcp_lib_disable();
-	hdcp.pending_disable = 0;
+	hdcp_wq_disable();
 
 	// 1A-04 and 1A-07a spec
 	/*
@@ -367,6 +362,7 @@ static void hdcp_work_queue(struct work_struct *work)
 	mutex_lock(&hdcp.lock);
 
 	hdcp_request_dss();
+
 	DBG("hdcp_work_queue() - START - %u hdmi=%d hdcp=%d auth=%d evt= %x %d"
 	    " hdcp_ctrl=%02x",
 		jiffies_to_msecs(jiffies),
@@ -506,26 +502,6 @@ static void hdcp_work_queue(struct work_struct *work)
 		event & 0xFF);
 
 	hdcp_release_dss();
-
-#if 0
-    if((event & 0xFF00) >> 8 != 2
-        && (event & 0xFF ) != 2
-        && hdcp.auth_state == HDCP_STATE_AUTH_3RD_STEP)
-	{
-        hdcp_send_uevent(1);
-    }
-    else
-    if(hdcp.auth_state == 0
-        && hdcp.hdmi_state == 1
-        && hdcp.hdcp_state == 0
-        && ((event & 0xFF00) >> 8) == 2
-        && (event & 0xFF) == 2
-        )
-    {
-        hdcp_send_uevent(1);
-    }
-#endif
-
 	mutex_unlock(&hdcp.lock);
 	HDCP_DBG_E();	
 }
@@ -573,10 +549,8 @@ static void hdcp_cancel_work(struct delayed_work **work)
 			printk(KERN_INFO "Canceling work failed - "
 					 "cancel_work_sync done %d\n", ret);
 		}
-		if (*work) {
-			kfree(*work);
-			*work = 0;
-		}
+		kfree(*work);
+		*work = 0;
 	}
 	HDCP_DBG_E();
 }
@@ -749,7 +723,12 @@ static void hdcp_irq_cb(int status)
 		hdcp.pending_disable = 1;	/* Used to exit on-going HDCP
 						 * work */
 		hdcp.hpd_low = 0;		/* Used to cancel HDCP works */
-		hdcp_lib_disable();
+		if (hdcp.pending_start) {
+			pr_err("cancelling work for pending start\n");
+			hdcp_cancel_work(&hdcp.pending_start);
+		}
+		hdcp_wq_disable();
+
 		/* In case of HDCP_STOP_FRAME_EVENT, HDCP stop
 		 * frame callback is blocked and waiting for
 		 * HDCP driver to finish accessing the HW
@@ -1032,7 +1011,6 @@ long hdcp_ioctl(struct file *fd, unsigned int cmd, unsigned long arg)
 	default:
 		return -ENOTTY;
 	} /* End switch */
-
 }
 
 
@@ -1125,27 +1103,8 @@ static int hdcp_load_keys(void)
 
 	return 0;
 }
-/*-----------------------------------------------------------------------------
- * Function: hdcp_status
- *-----------------------------------------------------------------------------
- */
- #if 0
-static ssize_t hdcp_status_show(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	return snprintf(buf, PAGE_SIZE, "%d\n", hdcp.auth_state);
-}
 
-static ssize_t hdcp_status_store(struct device *dev,
-		struct device_attribute *attr,
-		const char *buf, size_t size)
-{
 
-	return 0;
-}
-static DEVICE_ATTR(hdcpstatus, S_IRUGO | S_IWUSR, hdcp_status_show,
-							hdcp_status_store);
-#endif
 /*-----------------------------------------------------------------------------
  * Function: hdcp_init
  *-----------------------------------------------------------------------------
@@ -1183,10 +1142,6 @@ static int __init hdcp_init(void)
 		printk(KERN_ERR "HDCP: Could not add character driver\n");
 		goto err_register;
 	}
-
-//	if (device_create_file(&dssdev->dev, &dev_attr_hdcpstatus)) {
-//		printk(KERN_ERR "failed to create sysfs file\n");
-//	}
 
 	mutex_lock(&hdcp.lock);
 
@@ -1264,10 +1219,6 @@ static void __exit hdcp_exit(void)
 	omapdss_hdmi_register_hdcp_callbacks(0, 0, 0);
 
 	hdcp_release_dss();
-
-//	if (device_remove_file(&dssdev->dev, &dev_attr_hdcpstatus)) {
-//		printk(KERN_ERR "failed to remove sysfs file\n");
-//	}
 
 	misc_deregister(&mdev);
 
