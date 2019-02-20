@@ -2073,6 +2073,8 @@ static int twl6040_set_bias_level(struct snd_soc_codec *codec,
 		/* initialize vdd/vss registers with reg_cache */
 		twl6040_init_vdd_regs(codec);
 
+                cdc_tcxo_set_req_int(CDC_TCXO_CLK3, 1); //                                                                            
+
 		break;
 	case SND_SOC_BIAS_OFF:
 		if (!priv->codec_powered)
@@ -2472,6 +2474,15 @@ static int twl6040_probe(struct snd_soc_codec *codec)
 		goto hook_irq_err;
 	}
 #endif
+
+	ret = twl6040_request_irq(codec->control_data, TWL6040_IRQ_HF,
+				twl6040_audio_handler, 0,
+				"twl6040_irq_hf", codec);
+	if (ret) {
+		dev_err(codec->dev, "HF IRQ request failed: %d\n", ret);
+		goto hfirq_err;
+	}
+
 	/* init vio registers */
 	twl6040_init_vio_regs(codec);
 
