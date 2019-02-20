@@ -160,7 +160,22 @@ static int sdp4430_mcpdm_startup(struct snd_pcm_substream *substream)
 
 	if (twl6040_power_mode) {
 
-                //LGE_D1_BSP_ICS seungdae.goh@lge.com 2012-04-24 [START_LGE]
+                //                                                          
+#if 0 //Ti patch
+		clk_id = TWL6040_HPPLL_ID;
+		freq = 38400000;
+
+		/*
+		 * TWL6040 requires MCLK to be active as long as
+		 * high-performance mode is in use. Glitch-free mux
+		 * cannot tolerate MCLK gating
+		 */
+		ret = cdc_tcxo_set_req_int(CDC_TCXO_CLK2, 1);
+		if (ret) {
+			printk(KERN_ERR "failed to enable twl6040 MCLK\n");
+			goto err;
+		}
+#else                           
 		/*
 		 * TWL6040 requires MCLK to be active as long as
 		 * high-performance mode is in use. Glitch-free mux
@@ -175,6 +190,7 @@ static int sdp4430_mcpdm_startup(struct snd_pcm_substream *substream)
 
 		clk_id = TWL6040_HPPLL_ID;
 		freq = 38400000;
+#endif
 	} else {
 		clk_id = TWL6040_LPPLL_ID;
 		freq = 32768;
@@ -1154,7 +1170,7 @@ static struct platform_device *sdp4430_snd_device;
 
 static int __init sdp4430_soc_init(void)
 {
-	//u8 gpoctl;
+	u8 gpoctl;
 	int ret;
 
 	if (!machine_is_p2() && !machine_is_lghdk() && !machine_is_iff() && !machine_is_cosmo()) {
@@ -1203,12 +1219,26 @@ static int __init sdp4430_soc_init(void)
 		goto err_dev;
 	}
 
+	/* Default mode is low-power, MCLK not required */
+	twl6040_power_mode = 0;
+	cdc_tcxo_set_req_int(CDC_TCXO_CLK2, 0);
+
+	/*
+	 * CDC CLK2 supplies TWL6040 MCLK, drive it from REQ2INT to
+	 * have full control of MCLK gating
+	 */
+	cdc_tcxo_set_req_prio(CDC_TCXO_CLK2, CDC_TCXO_PRIO_REQINT);
+
 	return ret;
-#else //LGE_D1_BSP_ICS seungdae.goh@lge.com 2012-04-24
+#else //                                              
 
 	/* Default mode is low-power, MCLK not required */
 	twl6040_power_mode = 0;	//  Set Default mode is High-Performace power
-	cdc_tcxo_set_req_int(CDC_TCXO_CLK3, 0);
+
+	//                                                                                        
+	//cdc_tcxo_set_req_int(CDC_TCXO_CLK3, 0);
+	cdc_tcxo_set_req_int(CDC_TCXO_CLK3, 1);
+	//                                                                                      
 
 	/*
 	 * CDC CLK2 supplies TWL6040 MCLK, drive it from REQ2INT to
@@ -1231,6 +1261,11 @@ static void __exit sdp4430_soc_exit(void)
 {
 #if 0 //Ti patch
 	regulator_put(av_switch_reg);
+	cdc_tcxo_set_req_int(CDC_TCXO_CLK2, 0);
+	cdc_tcxo_set_req_prio(CDC_TCXO_CLK2, CDC_TCXO_PRIO_REQINT);
+#else
+	cdc_tcxo_set_req_int(CDC_TCXO_CLK3, 0);
+	cdc_tcxo_set_req_prio(CDC_TCXO_CLK3, CDC_TCXO_PRIO_REQINT);
 #endif
 	platform_device_unregister(sdp4430_snd_device);
 	snd_soc_unregister_dais(&sdp4430_snd_device->dev, ARRAY_SIZE(dai));
