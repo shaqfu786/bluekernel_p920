@@ -23,6 +23,7 @@
 #include <linux/reboot.h>
 #include <linux/omapfb.h>
 #include <linux/memblock.h>
+#include <linux/cdc_tcxo.h>
 
 #include <plat/i2c.h>
 #include <plat/irqs.h>
@@ -50,6 +51,7 @@
 
 #include <video/omapdss.h>
 
+#include <plat/android-display.h>
 #include <lge/board.h>
 #include <lge/common.h>
 
@@ -738,7 +740,18 @@ void __init lge_common_reserve(void)
 #endif
 
 #ifdef CONFIG_ION_OMAP
+	omap_android_display_setup(&lge_machine_data.dss_board,
+				   NULL,
+				   NULL,
+				   &fb_pdata,
+				   get_omap_ion_platform_data());
 	omap_ion_init();
+#else
+	omap_android_display_setup(&lge_machine_data.dss_board,
+				   NULL,
+				   NULL,
+				   &fb_pdata,
+				   NULL);
 #endif
 	omap_reserve();
 }
