@@ -395,7 +395,7 @@ static void lge_common_display_init(void)
 
 	if (lge_machine_data.fb_pdata)
 		fb = lge_machine_data.fb_pdata;
-	omap_vram_set_sdram_vram(fb->mem_desc.region[0].size, 0);
+//	omap_vram_set_sdram_vram(fb->mem_desc.region[0].size, 0);
 	omapfb_set_platform_data(fb);
 
 	if (lge_machine_data.dss_board != NULL)
