@@ -733,12 +733,6 @@ void __init lge_common_reserve(void)
 	omap_ipu_set_static_mempool(PHYS_ADDR_DUCATI_MEM, PHYS_ADDR_DUCATI_SIZE +
 					SZ_1M*90);
 #endif
-#ifdef CONFIG_OMAP_REMOTE_PROC_DSP
-	memblock_remove(PHYS_ADDR_TESLA_MEM, PHYS_ADDR_TESLA_SIZE);
-	omap_dsp_set_static_mempool(PHYS_ADDR_TESLA_MEM,
-					PHYS_ADDR_TESLA_SIZE);
-#endif
-
 #ifdef CONFIG_ION_OMAP
 	omap_android_display_setup(&lge_machine_data.dss_board,
 				   NULL,
