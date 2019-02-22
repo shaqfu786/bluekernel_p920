@@ -716,6 +716,7 @@ void __init lge_common_map_io(void)
 
 void __init lge_common_reserve(void)
 {
+	omap_init_ram_size();
 	/* LGE_SJIT 2012-02-06 [dojip.kim@lge.com]
 	 * need to align 1M for lge panic handler
 	 */
