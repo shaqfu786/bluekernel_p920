@@ -717,6 +717,21 @@ void __init lge_common_map_io(void)
 void __init lge_common_reserve(void)
 {
 	omap_init_ram_size();
+
+#ifdef CONFIG_ION_OMAP
+	omap_android_display_setup(&lge_machine_data.dss_board,
+				   NULL,
+				   NULL,
+				   &fb_pdata,
+				   get_omap_ion_platform_data());
+	omap_ion_init();
+#else
+	omap_android_display_setup(&lge_machine_data.dss_board,
+				   NULL,
+				   NULL,
+				   &fb_pdata,
+				   NULL);
+#endif
 	/* LGE_SJIT 2012-02-06 [dojip.kim@lge.com]
 	 * need to align 1M for lge panic handler
 	 */
@@ -733,20 +748,6 @@ void __init lge_common_reserve(void)
 #else
 	omap_ipu_set_static_mempool(PHYS_ADDR_DUCATI_MEM, PHYS_ADDR_DUCATI_SIZE +
 					SZ_1M*90);
-#endif
-#ifdef CONFIG_ION_OMAP
-	omap_android_display_setup(&lge_machine_data.dss_board,
-				   NULL,
-				   NULL,
-				   &fb_pdata,
-				   get_omap_ion_platform_data());
-	omap_ion_init();
-#else
-	omap_android_display_setup(&lge_machine_data.dss_board,
-				   NULL,
-				   NULL,
-				   &fb_pdata,
-				   NULL);
 #endif
 	omap_reserve();
 }
