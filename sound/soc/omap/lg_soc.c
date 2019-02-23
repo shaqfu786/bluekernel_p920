@@ -269,18 +269,11 @@ static int sdp4430_mcbsp_hw_params(struct snd_pcm_substream *substream,
                                   SND_SOC_DAIFMT_IB_IF |
                                   SND_SOC_DAIFMT_CBM_CFM);
 #else                           
-		ret = snd_soc_dai_set_fmt(cpu_dai,
-			SND_SOC_DAIFMT_DSP_B |
-			SND_SOC_DAIFMT_NB_IF |
-			SND_SOC_DAIFMT_CBM_CFM);
+	     ret = snd_soc_dai_set_fmt(cpu_dai,
+			          SND_SOC_DAIFMT_I2S |
+			          SND_SOC_DAIFMT_NB_NF |
+			          SND_SOC_DAIFMT_CBM_CFM);
 #endif
-	} else {
-		/* Set cpu DAI configuration */
-		ret = snd_soc_dai_set_fmt(cpu_dai,
-				  SND_SOC_DAIFMT_I2S |
-				  SND_SOC_DAIFMT_NB_NF |
-				  SND_SOC_DAIFMT_CBM_CFM);
-	}
 
 	if (ret < 0) {
 		printk(KERN_ERR "can't set cpu DAI configuration\n");
@@ -390,7 +383,7 @@ static int mcbsp_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 	if (be_id == OMAP_ABE_DAI_MM_FM)
 		channels->min = 2;
 	else if (be_id == OMAP_ABE_DAI_BT_VX)
-		channels->min = 1;
+		channels->min = 2;
 	snd_mask_set(&params->masks[SNDRV_PCM_HW_PARAM_FORMAT -
 	                            SNDRV_PCM_HW_PARAM_FIRST_MASK],
 	                            SNDRV_PCM_FORMAT_S16_LE);
