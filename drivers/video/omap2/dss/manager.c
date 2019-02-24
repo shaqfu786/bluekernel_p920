@@ -2858,6 +2858,8 @@ static int configure_overlay_for_m2m_wb(enum omap_plane plane)
 	u16 x_decim, y_decim;
 	bool five_taps;
 	u16 orig_w, orig_h, orig_outw, orig_outh;
+	bool m2m_with_ovl = false;
+	bool m2m_with_mgr = false;
 
 	c = &dss_cache.overlay_cache[plane];
 
@@ -2908,7 +2910,8 @@ static int configure_overlay_for_m2m_wb(enum omap_plane plane)
 			c->global_alpha,
 			c->pre_mult_alpha,
 			c->channel,
-			c->p_uv_addr);
+			c->p_uv_addr,
+			m2m_with_ovl || m2m_with_mgr);
 
 	if (r) {
 		/* this shouldn't happen */

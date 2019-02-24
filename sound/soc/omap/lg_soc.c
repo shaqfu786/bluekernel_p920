@@ -47,7 +47,7 @@
 #include "omap-dmic.h"
 #include "../codecs/twl6040.h"
 
-//static struct regulator *av_switch_reg;
+static struct regulator *av_switch_reg;
 
 
 static int twl6040_power_mode;
@@ -274,6 +274,13 @@ static int sdp4430_mcbsp_hw_params(struct snd_pcm_substream *substream,
 			          SND_SOC_DAIFMT_NB_NF |
 			          SND_SOC_DAIFMT_CBM_CFM);
 #endif
+	} else {
+		/* Set cpu DAI configuration */
+		ret = snd_soc_dai_set_fmt(cpu_dai,
+				  SND_SOC_DAIFMT_I2S |
+				  SND_SOC_DAIFMT_NB_NF |
+				  SND_SOC_DAIFMT_CBM_CFM);
+	}
 
 	if (ret < 0) {
 		printk(KERN_ERR "can't set cpu DAI configuration\n");
@@ -425,7 +432,6 @@ static struct snd_soc_jack_pin hs_jack_pins[] = {
 	},
 };
 
-/*
 static int sdp4430_av_switch_event(struct snd_soc_dapm_widget *w,
 				   struct snd_kcontrol *kcontrol, int event)
 {
@@ -438,7 +444,6 @@ static int sdp4430_av_switch_event(struct snd_soc_dapm_widget *w,
 
 	return ret;
 }
-*/
 
 static int sdp4430_get_power_mode(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol)
@@ -1246,11 +1251,7 @@ static int __init sdp4430_soc_init(void)
 
 	/* Default mode is low-power, MCLK not required */
 	twl6040_power_mode = 0;	//  Set Default mode is High-Performace power
-
-	//                                                                                        
-	//cdc_tcxo_set_req_int(CDC_TCXO_CLK3, 0);
-	cdc_tcxo_set_req_int(CDC_TCXO_CLK3, 1);
-	//                                                                                      
+	cdc_tcxo_set_req_int(CDC_TCXO_CLK3, 0);
 
 	/*
 	 * CDC CLK2 supplies TWL6040 MCLK, drive it from REQ2INT to
@@ -1273,11 +1274,6 @@ static void __exit sdp4430_soc_exit(void)
 {
 #if 0 //Ti patch
 	regulator_put(av_switch_reg);
-	cdc_tcxo_set_req_int(CDC_TCXO_CLK2, 0);
-	cdc_tcxo_set_req_prio(CDC_TCXO_CLK2, CDC_TCXO_PRIO_REQINT);
-#else
-	cdc_tcxo_set_req_int(CDC_TCXO_CLK3, 0);
-	cdc_tcxo_set_req_prio(CDC_TCXO_CLK3, CDC_TCXO_PRIO_REQINT);
 #endif
 	platform_device_unregister(sdp4430_snd_device);
 	snd_soc_unregister_dais(&sdp4430_snd_device->dev, ARRAY_SIZE(dai));
